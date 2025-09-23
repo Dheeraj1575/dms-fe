@@ -1,0 +1,28 @@
+# Step 1: Build stage (Node.js for React/Vite)
+FROM node:20.19-alpine AS build-stage
+WORKDIR /app
+
+# Install git (if needed)
+RUN apk add --no-cache git
+
+# Copy package.json and package-lock.json first (faster caching)
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy rest of the source code
+COPY . .
+
+# Build React app
+RUN npm run build
+
+# Step 2: Runtime stage (Tomcat to serve built React)
+FROM tomcat:9-jdk17
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copy React build output to Tomcat ROOT
+COPY --from=build-stage /app/dist /usr/local/tomcat/webapps/ROOT
+
+EXPOSE 8082
+CMD ["catalina.sh", "run"]
