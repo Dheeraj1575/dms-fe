@@ -2,17 +2,15 @@
 pipeline {
   agent any
 
-  // Optional: if you configured NodeJS in Manage Jenkins -> Global Tool Configuration
-  // tools { nodejs 'NodeJS_18' }
-
   environment {
     PROJECT = "new-project2"   // optional name
+    IMAGE   = "frontend:latest"
+    CONTAINER = "frontend-container"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // if Jenkins job is configured to fetch from SCM this does nothing extra
         checkout scm
       }
     }
@@ -23,7 +21,6 @@ pipeline {
           if (isUnix()) {
             sh 'npm ci'
           } else {
-            // on Windows node
             bat 'npm ci'
           }
         }
@@ -44,21 +41,43 @@ pipeline {
 
     stage('Archive build') {
       steps {
-        // archives the generated dist so you can download from Jenkins
         archiveArtifacts artifacts: 'dist/**', fingerprint: true
       }
     }
 
-    stage('Docker build (optional)') {
+    stage('Docker build') {
       when {
         expression { return fileExists('Dockerfile.frontend') }
       }
       steps {
         script {
           if (isUnix()) {
-            sh 'docker build -f Dockerfile.frontend -t frontend:latest .'
+            sh "docker build -f Dockerfile.frontend -t ${IMAGE} ."
           } else {
-            bat 'docker build -f Dockerfile.frontend -t frontend:latest .'
+            bat "docker build -f Dockerfile.frontend -t ${IMAGE} ."
+          }
+        }
+      }
+    }
+
+    stage('Run container') {
+      when {
+        expression { return fileExists('Dockerfile.frontend') }
+      }
+      steps {
+        script {
+          if (isUnix()) {
+            sh """
+              docker stop ${CONTAINER} || true
+              docker rm ${CONTAINER} || true
+              docker run -d -p 8080:8080 --name ${CONTAINER} ${IMAGE}
+            """
+          } else {
+            bat """
+              docker stop ${CONTAINER} || exit 0
+              docker rm ${CONTAINER} || exit 0
+              docker run -d -p 8080:8080 --name ${CONTAINER} ${IMAGE}
+            """
           }
         }
       }
@@ -66,7 +85,12 @@ pipeline {
   }
 
   post {
-    success { echo "Build finished successfully" }
-    failure { echo "Build failed — check console output" }
+    success {
+      echo "✅ Build and deployment finished successfully"
+      echo "👉 Open the app at: http://localhost:8080 (or http://<server-ip>:8080 if remote)"
+    }
+    failure {
+      echo "❌ Build failed — check console output"
+    }
   }
 }
