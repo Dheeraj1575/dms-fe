@@ -3,9 +3,11 @@ pipeline {
   agent any
 
   environment {
-    PROJECT = "new-project2"   // optional name
-    IMAGE   = "frontend:latest"
+    PROJECT   = "new-project2"   // optional name
+    IMAGE     = "frontend:latest"
     CONTAINER = "frontend-container"
+    HOST_PORT = "8085"           // host port for frontend
+    CONTAINER_PORT = "8080"      // internal Tomcat port
   }
 
   stages {
@@ -70,13 +72,13 @@ pipeline {
             sh """
               docker stop ${CONTAINER} || true
               docker rm ${CONTAINER} || true
-              docker run -d -p 8080:8080 --name ${CONTAINER} ${IMAGE}
+              docker run -d -p ${HOST_PORT}:${CONTAINER_PORT} --name ${CONTAINER} ${IMAGE}
             """
           } else {
             bat """
               docker stop ${CONTAINER} || exit 0
               docker rm ${CONTAINER} || exit 0
-              docker run -d -p 8080:8080 --name ${CONTAINER} ${IMAGE}
+              docker run -d -p ${HOST_PORT}:${CONTAINER_PORT} --name ${CONTAINER} ${IMAGE}
             """
           }
         }
@@ -87,7 +89,7 @@ pipeline {
   post {
     success {
       echo "✅ Build and deployment finished successfully"
-      echo "👉 Open the app at: http://localhost:8080 (or http://<server-ip>:8080 if remote)"
+      echo "👉 Open the app at: http://localhost:${HOST_PORT} (or http://<server-ip>:${HOST_PORT} if remote)"
     }
     failure {
       echo "❌ Build failed — check console output"
