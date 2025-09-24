@@ -6,7 +6,7 @@ pipeline {
     PROJECT   = "new-project2"   // optional name
     IMAGE     = "frontend:latest"
     CONTAINER = "frontend-container"
-    HOST_PORT = "8085"           // host port for frontend
+    HOST_PORT = "8082"           // host port for frontend
     CONTAINER_PORT = "8080"      // internal Tomcat port
   }
 
@@ -63,27 +63,26 @@ pipeline {
     }
 
     stage('Run container') {
-      when {
-        expression { return fileExists('Dockerfile.frontend') }
-      }
-      steps {
-        script {
-          if (isUnix()) {
-            sh """
-              docker stop ${CONTAINER} || true
-              docker rm ${CONTAINER} || true
-              docker run -d -p ${HOST_PORT}:${CONTAINER_PORT} --name ${CONTAINER} ${IMAGE}
-            """
-          } else {
-            bat """
-              docker stop ${CONTAINER} || exit 0
-              docker rm ${CONTAINER} || exit 0
-              docker run -d -p ${HOST_PORT}:${CONTAINER_PORT} --name ${CONTAINER} ${IMAGE}
-            """
-          }
-        }
+  when {
+    expression { return fileExists('Dockerfile.frontend') }
+  }
+  steps {
+    script {
+      if (isUnix()) {
+        sh """
+          docker rm -f ${CONTAINER} || true
+          docker run -d -p 8085:8080 --name ${CONTAINER} ${IMAGE}
+        """
+      } else {
+        bat """
+          docker rm -f ${CONTAINER} || exit 0
+          docker run -d -p 8085:8080 --name ${CONTAINER} ${IMAGE}
+        """
       }
     }
+  }
+}
+
   }
 
   post {
